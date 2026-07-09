@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Calculator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0f172a;
+            font-family: ui-sans-serif, system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .calc-housing {
+            background-color: #1e293b;
+            border-radius: 20px;
+            width: 340px;
+            padding: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .output-panel {
+            width: 100%;
+            background-color: #0f172a;
+            border: none;
+            border-radius: 12px;
+            padding: 1.25rem;
+            color: #f8fafc;
+            text-align: right;
+            font-size: 2.25rem;
+            margin-bottom: 1.25rem;
+            font-variant-numeric: tabular-nums;
+            overflow-x: auto;
+        }
+        .input-matrix {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+        button {
+            background-color: #334155;
+            color: #ffffff;
+            border: none;
+            padding: 1.25rem 0;
+            font-size: 1.35rem;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.1s linear;
+        }
+        button:hover { background-color: #475569; }
+        button:active { transform: scale(0.97); }
+        
+        button.operator-node { background-color: #f59e0b; color: #0f172a; font-weight: 600; }
+        button.operator-node:hover { background-color: #d97706; }
+        
+        button.utility-node { background-color: #64748b; }
+        button.utility-node:hover { background-color: #475569; }
+        
+        .double-width { grid-column: span 2; }
+    </style>
+</head>
+<body>
+
+<div class="calc-housing">
+    <div class="output-panel" id="monitorView">0</div>
+    <div class="input-matrix">
+        <button class="utility-node" onclick="clearStream()">AC</button>
+        <button class="utility-node" onclick="dropLastToken()">&larr;</button>
+        <button class="utility-node" onclick="injectToken('%')">%</button>
+        <button class="operator-node" onclick="injectToken('/')">&divide;</button>
+
+        <button onclick="injectToken('7')">7</button>
+        <button onclick="injectToken('8')">8</button>
+        <button onclick="injectToken('9')">9</button>
+        <button class="operator-node" onclick="injectToken('*')">&times;</button>
+
+        <button onclick="injectToken('4')">4</button>
+        <button onclick="injectToken('5')">5</button>
+        <button onclick="injectToken('6')">6</button>
+        <button class="operator-node" onclick="injectToken('-')">-</button>
+
+        <button onclick="injectToken('1')">1</button>
+        <button onclick="injectToken('2')">2</button>
+        <button onclick="injectToken('3')">3</button>
+        <button class="operator-node" onclick="injectToken('+')">+</button>
+
+        <button class="double-width" onclick="injectToken('0')">0</button>
+        <button onclick="injectToken('.')">.</button>
+        <button class="operator-node" onclick="processStream()">=</button>
+    </div>
+</div>
+
+<script>
+    const view = document.getElementById('monitorView');
+    let dynamicBuffer = '0';
+    let outputIsFresh = false;
+
+    function updateDisplay() {
+        view.innerText = dynamicBuffer;
+    }
+
+    function injectToken(char) {
+        const operators = ['+', '-', '*', '/', '%'];
+        
+        if (outputIsFresh) {
+            // Reset state if a digit is pressed right after evaluation
+            dynamicBuffer = operators.includes(char) ? dynamicBuffer : '';
+            outputIsFresh = false;
+        }
+
+        if (dynamicBuffer === '0' && !operators.includes(char) && char !== '.') {
+            dynamicBuffer = char;
+        } else {
+            // Stop consecutive operators from stacking up
+            if (operators.includes(char) && operators.includes(dynamicBuffer.slice(-1))) {
+                dynamicBuffer = dynamicBuffer.slice(0, -1) + char;
+            } else {
+                dynamicBuffer += char;
+            }
+        }
+        updateDisplay();
+    }
+
+    function clearStream() {
+        dynamicBuffer = '0';
+        updateDisplay();
+    }
+
+    function dropLastToken() {
+        if (dynamicBuffer.length > 1) {
+            dynamicBuffer = dynamicBuffer.slice(0, -1);
+        } else {
+            dynamicBuffer = '0';
+        }
+        updateDisplay();
+    }
+
+    function processStream() {
+        try {
+            if (!dynamicBuffer || dynamicBuffer === 'Error') return;
+            
+            // Clean division by zero constraints manually before evaluating string
+            if (dynamicBuffer.includes('/0')) {
+                throw new Error("ZeroDivision");
+            }
+
+            let resolvedValue = Function(`"use strict"; return (${dynamicBuffer})`)();
+            
+            // Format floats gracefully to avoid computational noise like 0.1 + 0.2
+            if (resolvedValue % 1 !== 0) {
+                resolvedValue = parseFloat(resolvedValue.toFixed(6));
+            }
+
+            dynamicBuffer = String(resolvedValue);
+            outputIsFresh = true;
+        } catch (err) {
+            dynamicBuffer = 'Error';
+            outputIsFresh = true;
+        }
+        updateDisplay();
+    }
+</script>
+</body>
+</html>
+
